@@ -37,9 +37,15 @@ int previousMag;                             //Stores the filteredMag
 float goalPost[1][2];                           //Creates empty array of goal posts
 int currentTarget = 0;                          //Sets current target to the first value of goalPost
 float previousCoords[1][2] = {0, 0};            //Stores newCoords from previous loop
-float newCoords[1][2] = {0, 0};                 //Stores the robot coordinates each loop
+//float newCoords[1][2] = {0, 0};                 //Stores the robot coordinates each loop
 int steerPos;                                   //Creates empty variable to store the angle to send the servo to
 int angleToTarget = 0;                          //Stores the angle between the current position vector and the target goalpost vector
+
+//Unit Testing
+int heading[36][1];
+int loopRun = 0;
+int newCoords[36][2];
+int aimVector[1][1];
 
 void setup() {
   myservo.attach(servoPin);                     //Attaches the servo on pin 9 to the servo object
@@ -56,25 +62,35 @@ void setup() {
   lead to an assumed magnetometer bias of 0. Use the Calibrate example
   program to determine appropriate values for your particular unit.
   */
-  compass.m_min = (LSM303::vector<int16_t>){ -1661,  +2121,  +3603};
+  /*compass.m_min = (LSM303::vector<int16_t>){ -1661,  +2121,  +3603};
   compass.m_max = (LSM303::vector<int16_t>){ +1729,  +5710,  +3953}; 
 
   compass.read();
-  float heading = compass.heading();                                  //Records magnetometer heading value into pos
-  pos = heading;                                                      //Sets starting angle wrt north
-  filteredPrevious = pos;                                             //Sets starting filter value to pos (allows the filter to start closer to the right value and reduces wobbles at program start)
+  float heading = compass.heading();                                  //Records magnetometer heading value into pos*/
+  randomSeed(analogRead(0));
+  for(int i = 0; i <= 35; i++){
+    newCoords[i][0] = random(-1500, 1500);
+    newCoords[i][1] = random(-1500, 1500);
+  }
+  pos = 0;//heading[0][0];                                                      //Sets starting angle wrt north
+  /*filteredPrevious = pos;                                             //Sets starting filter value to pos (allows the filter to start closer to the right value and reduces wobbles at program start)
   goalPost[0][0] = -3000 * sin(pos / 57.2957795);                     //Set x-position of goalpost to x-distance from robot
   goalPost[0][1] = 3000 * cos(pos / 57.2957795);                      //Set y-position of goalpost to y-distance from robot
+  */
+  goalPost[0][0] = 0;
+  goalPost[0][1] = 0;
 }
   
 
 
 void loop() {
-
+  if(loopRun >=36){
+    exit(0);
+  }
   
 ////////////// SERVO - Steering ////////////////////////////////////////////////////
   //myservo.write(pos); //Moves servo to position value stored in pos
-  if(servoRange * -angleToTarget / 360 + 90 < minServoAngle){
+  /*if(servoRange * -angleToTarget / 360 + 90 < minServoAngle){
     myservo.write(filterSignal(minServoAngle, 0.8, false));                                            //If the robot is facing too far away from the target, it sets the turn to the max servo angle for our mechanism
   }
   else if(servoRange * -angleToTarget / 360 + 90 > maxServoAngle){
@@ -84,14 +100,16 @@ void loop() {
     myservo.write(filterSignal((servoRange * -angleToTarget / 360 + 90), 0.8, false));                   //If the robot is within the servo turn range, it sets the turn to angle between the current robot heading and the vector from the robot to the target
   }
   delay(10);
-
+*/
 ////////////// MAGNETOMETER - Steering ///////////////////////////////////////////////////
-  compass.read();
+  /*compass.read();
   float heading = compass.heading();
   pos = Kp * filterSignal(heading, 0.95, true);                                        //filterSteering() removes interference from the magnetometer with the filterStrength and uses Kp to rescale the value so that it can range from 0 to 360
+*/
+  pos = 0;//heading[loopRun][0];
 
 ////////////// SOLENOID VALVE ///////////////////////////////////////////////////
-unsigned long currentMillis = millis();
+/*unsigned long currentMillis = millis();
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
     if (solenoidState == LOW) {                                             //If the interval between solenoid triggers has elapsed and the solenoid is in its LOW state, then set its state to high (extend piston)
@@ -102,22 +120,22 @@ unsigned long currentMillis = millis();
     digitalWrite(solenoidPin, solenoidState);    //Switch Solenoid ON/oFF
   }
 
-
+*/
 ////////////////MAGNETOMETER - Mapping/////////////////////////////////////////
-  switchState = digitalRead(switchPin);                                   //Stores whether or not the reed switch has been activated this loop
+  /*switchState = digitalRead(switchPin);                                   //Stores whether or not the reed switch has been activated this loop
   if(switchState == 0 && previousSwitchState== 1){                        //If a magnet passes the reed switch for the first time since the reed switch was inactive, record the robot's new position and store switchState in previousSwitchState for next loop 
     newCoords[0][0] = (previousCoords[0][0] + partialTurn * -sin(pos / 57.2957795));         //New robot x-position (after movement) is recorded in newCoords
     newCoords[0][1] = (previousCoords[0][1] + partialTurn * cos(pos / 57.2957795));          //New robot x-position (after movement) is recorded in newCoords
     previousCoords[0][0] = newCoords[0][0];                               //The new robot x-position is stored in previousCoords 
     previousCoords[0][1] = newCoords[0][1];                               //The new robot y-position is stored in previousCoords 
-    
+    */
     float newSegmentVector[1][2] = {partialTurn * -sin(pos / 57.2957795), partialTurn * -cos(pos / 57.2957795)};                    //Creates vector that represents most recent movement vector
-    float newErrorVector[1][2] = {(goalPost[currentTarget][0] - newCoords[0][0]), (goalPost[currentTarget][1] - newCoords[0][1])};                    //Creates vector that stretches from the current robot position to the target location
+    float newErrorVector[1][2] = {(goalPost[currentTarget][0] - newCoords[loopRun][0]), (goalPost[currentTarget][1] - newCoords[loopRun][1])};                    //Creates vector that stretches from the current robot position to the target location
     angleToTarget = 57.2957795 * asin((newSegmentVector[0][0] * newErrorVector[0][1] - newSegmentVector[0][1] * newErrorVector[0][0])/(sqrt(sq(newSegmentVector[0][0]) + sq(newSegmentVector[0][1])) * sqrt(sq(newErrorVector[0][0]) + sq(newErrorVector[0][1]))));          //Uses cross product to calculate angle between newSegmentVector and the newErrorVector
     
     reedTicks++;            //Variable used to calculate distance travelled
     
-    previousSwitchState = 0;                                //If the switch is ticked, it is now in the on position
+    /*previousSwitchState = 0;                                //If the switch is ticked, it is now in the on position
   }
   else if(switchState == 0){                                          //If the switchState is active (magnet by reed switch), but it was active before, then the previousSwitchState is set to 0 (active) for next loop
     previousSwitchState = 0;
@@ -125,26 +143,47 @@ unsigned long currentMillis = millis();
   else{                                                               //If the switchState is inactive, set the previousSwitchState to inactive for next loop
     previousSwitchState = 1;
   }
-
+*/
+  if(newCoords[loopRun][1] > goalPost[0][1]){
+    aimVector[loopRun][0] = newCoords[loopRun][0] + 100 * cos((270 + angleToTarget) / 57.2957795);
+    aimVector[loopRun][1] = newCoords[loopRun][1] + 100 * sin((270 + angleToTarget) / 57.2957795);
+  }
+  else{
+    aimVector[loopRun][0] = newCoords[loopRun][0] + 100 * cos((270 + angleToTarget) / 57.2957795);
+    aimVector[loopRun][1] = newCoords[loopRun][1] - 100 * sin((270 + angleToTarget) / 57.2957795);
+  }
+  
 ////////////// Serial Print  ///////////////////////////////////////////////////
   
-  Serial.print("Angle to target: ");
-  Serial.print(angleToTarget);
-  Serial.print("   Filtered Magnetometer: ");
-  Serial.print(pos);
-  Serial.print("       Current Coordinates: (");
-  Serial.print(previousCoords[0][0]);
+  //Serial.print("Angle to target: ");
+  //Serial.print(angleToTarget);
+  //Serial.print("   Filtered Magnetometer: ");
+  //Serial.print(pos);
+  //Serial.print("       Current Coordinates: (");
+  Serial.print(newCoords[loopRun][0]);
   Serial.print(" ");
-  Serial.print(previousCoords[0][1]);
-  Serial.print(")     Goal Coordinates: (");
+  Serial.print(newCoords[loopRun][1]);
+  Serial.print(" ");
+  //Serial.print(")     Aim Vector: (");
+  Serial.print(aimVector[loopRun][0]);
+  Serial.print(" ");
+  Serial.print(aimVector[loopRun][1]);
+  Serial.print(" ");
+  //Serial.print(")     Goal Coordinates: (");
   Serial.print(goalPost[0][0]);
   Serial.print(" ");
   Serial.print(goalPost[0][1]);
-  Serial.print(")          ");  
+  Serial.print(" ");
+  //Serial.print(")          ");  
+  
+  Serial.print(angleToTarget);
+  
   Serial.println("");
 
 ///////////// Loop Delay ///////////////////////////////////////////////////
-  //delay(100);
+  delay(100);
+
+  loopRun++;
 }
 
 float filterSignal(float deg, float filterStrength, boolean magnetometer){                                    //Recursive low-pass filter function returns filtered signal
